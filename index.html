@@ -1,96 +1,857 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Minimal Email Viewer</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATI fetch Outlook Emails - MOFPS </title>
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
-  <style>
-    body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; }
-    button { margin-bottom: 10px; padding: 10px; }
-    textarea { width: 100%; height: 200px; background: #222; color: #fff; border: 1px solid #444; }
-    ul { list-style: none; padding: 0; }
-    li { padding: 8px; background: #222; margin-bottom: 5px; cursor: pointer; }
-    li:hover { background: #333; }
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+   <style>
+    :root {
+      --bg-primary: #111827;
+      --bg-secondary: #1f2937;
+      --text-primary: #f3f4f6;
+      --text-secondary: #d1d5db;
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-light: rgba(59, 130, 246, 0.2);
+      --green: #10b981;
+      --border: #374151;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      transition: all 0.2s ease-in-out;
+    }
+
+       body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0px;
+    }
+ 
+
+    header {
+      padding: 0;
+      background: var(--bg-primary); /* Add background color */
+      position: fixed; /* Make header fixed */
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 10; /* Ensure header is above other content */
+    }
+
+ .logo {
+      padding: 0px 0px 0px 0px;
+    }
+
+    .logo img {
+      height: 200px;
+      margin: 0;
+      padding: 0;
+      margin-bottom: 0;
+    }
+
+    .app-container {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+      margin-top: 210px; /* Reverted margin-top */
+      height: calc(100vh - 210px); /* Reverted height calculation */
+      overflow-y: auto; /* Add scrolling to the app container */
+    }
+
+    .sidebar {
+      background: var(--bg-secondary);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .button-group button {
+      flex: 1;
+    }
+
+    .filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    .filter-option {
+      flex: 1;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 8px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      text-align: center;
+      font-size: 0.9rem;
+      position: relative;
+    }
+
+    .filter-option:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .filter-option.active {
+      background: var(--accent-light);
+      color: var(--text-primary);
+      border-color: var(--accent);
+    }
+
+    .badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: var(--accent);
+      color: white;
+      font-size: 0.7rem;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Fetch controls */
+    .fetch-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    .fetch-controls label {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .fetch-controls select {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 5px 10px;
+      border-radius: 5px;
+      flex: 1;
+    }
+
+    .content {
+      background: var(--bg-secondary); /* Ensure solid background */
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1; /* Allow content to grow */
+      overflow-y: auto; /* Add scrolling to the content area */
+    }
+
+    .email-content-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .download-area {
+      display: none;
+      background: var(--accent-light);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .download-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .download-options {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 15px;
+    }
+
+    .attachment-item {
+      display: flex;
+      align-items: center;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      margin-bottom: 5px;
+    }
+
+    .attachment-checkbox {
+      margin-right: 10px;
+    }
+
+    .attachment-name {
+      flex: 1;
+    }
+
+    .attachment-size {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      margin-left: 10px;
+    }
+
+    .download-actions {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      width: 100%;
+    }
+
+    button.secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+
+    button.sm {
+      padding: 8px 15px;
+      font-size: 0.9rem;
+    }
+
+    button:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+    }
+
+    button.secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    button i {
+      margin-right: 8px;
+    }
+
+    button.icon-only i {
+      margin-right: 0;
+    }
+
+    .email-list {
+      list-style: none;
+      flex-grow: 1;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    .email-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .email-list::-webkit-scrollbar-track {
+      background: var(--bg-secondary);
+    }
+
+    .email-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .email-item {
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.05);
+      margin-bottom: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      opacity: 0;
+      transform: translateY(10px);
+      animation: fadeIn 0.3s ease-out forwards;
+      position: relative;
+    }
+
+    .email-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateX(5px);
+    }
+
+    .email-item.active {
+      border-left: 3px solid var(--accent);
+      background: var(--accent-light);
+    }
+
+    .email-item.has-attachments:after {
+      content: "\f0c6";
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: var(--accent);
+    }
+
+    .email-sender {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 5px;
+      display: block;
+    }
+
+    .email-subject {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .email-body {
+      flex-grow: 1;
+      background: var(--bg-primary); /* Ensure solid background */
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      line-height: 1.7;
+      overflow-y: auto;
+      resize: none;
+    }
+
+    .attachments-list {
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+
+    .attachments-list h4 {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .attachments-list h4 i {
+      margin-right: 8px;
+      color: var(--accent);
+    }
+
+    .attachment {
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 8px 12px;
+      border-radius: 5px;
+      margin-bottom: 5px;
+    }
+
+    .attachment i {
+      margin-right: 10px;
+      color: var(--accent);
+    }
+
+    .attachment-info {
+      flex: 1;
+    }
+
+    .load-more {
+      margin-top: 15px;
+      text-align: center;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .load-more:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-secondary);
+      text-align: center;
+      padding: 20px;
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 15px;
+      color: var(--accent);
+    }
+
+    .status-bar {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+
+    .email-count {
+      background: var(--accent-light);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 5px;
+      font-weight: bold;
+    }
+
+    .loading {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid var(--accent);
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+    }
+
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .download-button {
+      animation: pulse 1.5s infinite;
+      background: var(--green);
+    }
+
+    .download-button:hover {
+      background: var(--green);
+      opacity: 0.9;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .app-container {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+      
+      .sidebar, .content {
+        height: 400px;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+    }
+
+    .container {
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .empty-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-secondary);
+      text-align: center;
+      padding: 20px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 10px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+.stacked-email {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid var(--accent);
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 8px;
+
+
+}
+
+
+.ruel {align-items: center;}
+
+
   </style>
 </head>
 <body>
+  <header style="display: flex; flex-direction: column; align-items: center; padding: 10px 20px;">
+    <div class="header-content" style="display: flex; align-items: center; justify-content: center; width: 100%; max-width: 1200px;">
+      <div class="app-instructions">
+        <h3>How to Use:</h3>
+        <p>1. Sign in with your Microsoft account.</p>
+        <p>2. Select the number of emails to fetch.</p>
+        <p>3. Click on an email in the list to view its content and attachments.</p>
+        <p>4. Select attachments and click "Download Selected".</p>
+        <br>
+          
+        <p class="ruel"> Coded by Ruel McNeil</p>
+      </div>
+      <div class="logo" style="padding: 0; display: flex; flex-direction: column; align-items: flex-start; margin-left: 20px;">
+        <img src="Logo-Site.png" alt="Email Viewer Logo" style="height: 200px;">
+      </div>
+    </div>
+  </header>
+ 
+    </div>
+  </header>
+  <div class="container">
+    <div style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; padding: 5px 0;">
+      
+    </div>
+    <div class="app-container">
+      <div class="sidebar">
+        <div class="controls">
+          <button id="signInBtn">
+            <i class="fas fa-sign-in-alt"></i> Sign In with Microsoft
+          </button>
+          <div class="instructions">Sign in to load and view your emails below.</div>
+          <div class="fetch-controls">
+            <label>Fetch:</label>
+            <select id="fetchCount">
+              <option value="10">10 emails</option>
+              <option value="25">25 emails</option>
+              <option value="50">50 emails</option>
+              <option value="100">100 emails</option>
+              <option value="all">All emails</option>
+            </select>
+          </div>
+          <div class="filters">
+            <div class="filter-option" id="filterAll">All</div>
+            <div class="filter-option" id="filterAttachments">With Attachments <span class="badge" id="attachmentCount" style="display: none;">0</span></div>
+          </div>
+        </div>
+        <div class="loading" id="loadingEmails">
+          <div class="spinner"></div>
+          <span id="loadingText">Loading emails...</span>
+        </div>
+        <ul class="email-list" id="emailList">
+          <div class="empty-state">
+            <i class="fas fa-envelope-open"></i>
+            <p>Sign in to view your emails</p>
+          </div>
+        </ul>
+        <div id="loadMoreContainer" style="display: none;">
+          <div class="load-more" id="loadMoreBtn">
+            <i class="fas fa-arrow-down"></i> Load More
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <div id="downloadArea" class="download-area">
+          <div class="download-header">
+            <h3><i class="fas fa-paperclip"></i> Email Attachments</h3>
+            <button class="secondary sm" id="closeDownloadArea">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="download-options" id="attachmentsList"></div>
+          <div class="download-actions">
+            <button class="secondary" id="selectAllAttachments">
+              <i class="fas fa-check-square"></i> Select All
+            </button>
+            <button class="download-button" id="downloadAttachments">
+              <i class="fas fa-download"></i> Download Selected
+            </button>
+          </div>
+        </div>
+        <div class="email-content-header">
+          <h3 id="emailSubject"></h3>
+          <button class="secondary sm" id="viewAttachmentsBtn" style="display: none;">
+            <i class="fas fa-paperclip"></i> View Attachments
+          </button>
+        </div>
+        <div class="email-body" id="emailBody">
+          <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>Select an email to view its content</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
 
-<h3>📧 Outlook Email Viewer</h3>
-<button id="signInBtn">Sign In</button>
-<ul id="emailList"></ul>
-<textarea id="emailBody" readonly></textarea>
 
-<script>
-  // === MSAL Configuration ===
+ <script>
   const msalConfig = {
     auth: {
-      clientId: "c5fa69f9-e465-431d-8f24-398f1e882700", // Your Azure App Client ID
+      clientId: "c5fa69f9-e465-431d-8f24-398f1e882700",
       authority: "https://login.microsoftonline.com/common",
-      redirectUri: "https://ati-fetch-ruels-projects-54bfc2e3.vercel.app/" // ✅ Matches the registered URI in Azure
+      redirectUri: "http://localhost:5500/ati-email-app/index.html"
     }
   };
 
   const msalInstance = new msal.PublicClientApplication(msalConfig);
   let currentAccount = null;
+  let accessToken = null;
+  let nextPageUrl = null;
 
-  // === Sign in and get token ===
+  const toast = document.getElementById("toast");
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.style.display = "block";
+    setTimeout(() => toast.style.display = "none", 3000);
+  }
+
   async function signIn() {
     try {
-      const loginResp = await msalInstance.loginPopup({ scopes: ["Mail.Read", "User.Read"] });
-      currentAccount = loginResp.account;
-
-      let tokenResp;
-      try {
-        tokenResp = await msalInstance.acquireTokenSilent({
-          scopes: ["Mail.Read"],
-          account: currentAccount
-        });
-      } catch {
-        tokenResp = await msalInstance.acquireTokenPopup({ scopes: ["Mail.Read"] });
-      }
-
-      const accessToken = tokenResp.accessToken;
-      fetchEmails(accessToken); // Fetch emails after login
+      const response = await msalInstance.loginPopup({ scopes: ["Mail.Read"] });
+      currentAccount = response.account;
+      const tokenResp = await msalInstance.acquireTokenSilent({
+        scopes: ["Mail.Read"],
+        account: currentAccount
+      }).catch(() => msalInstance.acquireTokenPopup({ scopes: ["Mail.Read"] }));
+      accessToken = tokenResp.accessToken;
+      fetchEmails();
     } catch (err) {
-      console.error("Sign-in failed:", err);
+      console.error("Login failed", err);
+      showToast("Login failed");
     }
   }
 
-  // === Fetch emails using Graph API ===
-  async function fetchEmails(token) {
+  async function fetchEmails(url = "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=10&$select=id,subject,bodyPreview,from,hasAttachments") {
+    console.log("Fetching emails. Logo display:", document.querySelector(".logo").style.display, "Logo offsetTop:", document.querySelector(".logo").offsetTop);
     try {
-      const res = await fetch("https://graph.microsoft.com/v1.0/me/messages?$top=10&$select=id,subject,bodyPreview,from", {
-        headers: { Authorization: `Bearer ${token}` }
+      document.getElementById("loadingEmails").style.display = "flex";
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${accessToken}` }
       });
-
       const data = await res.json();
-      const list = document.getElementById("emailList");
-      list.innerHTML = "";
+      document.getElementById("loadingEmails").style.display = "none";
+      document.querySelector(".email-list .empty-state")?.remove(); // hide empty message
+      nextPageUrl = data["@odata.nextLink"] || null;
 
+      const emailList = document.getElementById("emailList");
       data.value.forEach(email => {
-        const from = email.from?.emailAddress?.address || "Unknown";
-        const subject = email.subject || "(No Subject)";
-        const item = document.createElement("li");
-        item.textContent = `${from} - ${subject}`;
-        item.onclick = () => {
-          document.getElementById("emailBody").value = email.bodyPreview || "No preview available.";
+        const li = document.createElement("li");
+        li.className = "email-item" + (email.hasAttachments ? " has-attachments" : "");
+        li.innerHTML = `
+          <span class="email-sender">${email.from.emailAddress.address}</span>
+          <div class="email-subject">${email.subject}</div>`;
+        li.onclick = () => {
+          document.getElementById("emailSubject").textContent = email.subject;
+          document.getElementById("emailBody").innerHTML = `<p>${email.bodyPreview}</p>`;
+          if (email.hasAttachments) {
+            loadAttachments(email.id);
+            document.getElementById("viewAttachmentsBtn").style.display = "inline-flex";
+          } else {
+            document.getElementById("viewAttachmentsBtn").style.display = "none";
+          }
         };
-        list.appendChild(item);
+        emailList.appendChild(li);
       });
 
+      document.getElementById("loadMoreContainer").style.display = nextPageUrl ? "block" : "none";
+      showToast("Emails loaded");
+      console.log("Emails fetched and list populated. Logo display:", document.querySelector(".logo").style.display, "Logo offsetTop:", document.querySelector(".logo").offsetTop);
     } catch (err) {
-      console.error("Error fetching emails:", err);
+      console.error("Email fetch failed", err);
+      showToast("Error fetching emails");
     }
   }
+
+  async function loadAttachments(messageId) {
+    try {
+      const res = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${messageId}/attachments`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const data = await res.json();
+      const container = document.getElementById("attachmentsList");
+      data.value.forEach(att => {
+        if (att.contentBytes) {
+          const div = document.createElement("div");
+          div.className = "attachment-item";
+          div.innerHTML = `
+            <input type="checkbox" class="attachment-checkbox" data-name="${att.name}" data-bytes="${att.contentBytes}" data-type="${att.contentType}">
+            <span class="attachment-name">${att.name}</span>
+          `;
+          container.appendChild(div);
+        }
+      });
+      document.getElementById("downloadArea").style.display = "block";
+    } catch (err) {
+      console.error("Attachments fetch failed", err);
+      showToast("Error loading attachments");
+    }
+  }
+
+  function downloadSelectedAttachments() {
+    document.querySelectorAll(".attachment-checkbox:checked").forEach(box => {
+      const name = box.dataset.name;
+      const bytes = box.dataset.bytes;
+      const type = box.dataset.type;
+      const a = document.createElement("a");
+      a.href = `data:${type};base64,${bytes}`;
+      a.download = name;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  }
+
+  function hideEmptyState() {
+    const empty = document.querySelector(".email-list .empty-state");
+    if (empty) empty.style.display = "none";
+  }
+
+  // Filter buttons
+  document.getElementById("filterAttachments").onclick = () => {
+    document.querySelectorAll(".filter-option").forEach(el => el.classList.remove("active"));
+    document.getElementById("filterAttachments").classList.add("active");
+    document.querySelectorAll(".email-item").forEach(el => {
+      el.style.display = el.classList.contains("has-attachments") ? "block" : "none";
+    });
+  };
+
+  document.getElementById("filterAll").onclick = () => {
+    document.querySelectorAll(".filter-option").forEach(el => el.classList.remove("active"));
+    document.getElementById("filterAll").classList.add("active");
+    document.querySelectorAll(".email-item").forEach(el => el.style.display = "block");
+  };
+
+  // Fetch count dropdown
+  document.getElementById("fetchCount").addEventListener("change", e => {
+    const val = e.target.value;
+    let top = 10;
+    if (val !== "all") {
+      top = parseInt(val);
+    }
+    document.getElementById("emailList").innerHTML = ""; // reset list
+    fetchEmails(`https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=${top}&$select=id,subject,bodyPreview,from,hasAttachments`);
+  });
 
   document.getElementById("signInBtn").onclick = signIn;
+  document.getElementById("loadMoreBtn").onclick = () => fetchEmails(nextPageUrl);
+  document.getElementById("downloadAttachments").onclick = downloadSelectedAttachments;
+  document.getElementById("closeDownloadArea").onclick = () => document.getElementById("downloadArea").style.display = "none";
+  document.getElementById("selectAllAttachments").onclick = () => {
+    const checkboxes = document.querySelectorAll(".attachment-checkbox");
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+  };
 
   window.onload = () => {
+    console.log("Window loaded. Logo display:", document.querySelector(".logo").style.display, "Logo offsetTop:", document.querySelector(".logo").offsetTop);
     const accounts = msalInstance.getAllAccounts();
     if (accounts.length > 0) {
       currentAccount = accounts[0];
       signIn();
     }
   };
+// Stacked attachments panel setup
+const stackedAttachments = [];
+
+function addToStackedAttachments(email) {
+  const container = document.getElementById("emailBody");
+  const wrapper = document.createElement("div");
+  wrapper.className = "stacked-email";
+  wrapper.innerHTML = `
+    <h4>${email.subject}</h4>
+    <p>${email.bodyPreview}</p>
+    <hr style="border-color: #374151; margin: 1rem 0;" />
+  `;
+  container.appendChild(wrapper);
+}
+
+// Modify li.onclick in fetchEmails to use this:
+li.onclick = () => {
+  document.getElementById("emailSubject").textContent = email.subject;
+  addToStackedAttachments(email);
+  if (email.hasAttachments) {
+    loadAttachments(email.id);
+    document.getElementById("viewAttachmentsBtn").style.display = "inline-flex";
+  } else {
+function previewAttachment(contentBase64, type, name) {
+  const win = window.open("", "_blank");
+  if (!win) return alert("Pop-up blocked. Allow pop-ups to preview.");
+  win.document.write(`<title>${name}</title>`);
+  if (type.startsWith("image/")) {
+    win.document.write(`<img src="data:${type};base64,${contentBase64}" style="max-width:100%;"/>`);
+  } else if (type === "application/pdf") {
+    win.document.write(`<embed src="data:${type};base64,${contentBase64}" width="100%" height="100%" type="application/pdf">`);
+  } else {
+    win.document.write(`<p>Preview not supported for ${type}</p>`);
+  }
+}
+    document.getElementById("viewAttachmentsBtn").style.display = "none";
+  }
+};
 </script>
+
+
 </body>
 </html>
