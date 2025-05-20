@@ -23,9 +23,9 @@
   // === MSAL Configuration ===
   const msalConfig = {
     auth: {
-      clientId: "c5fa69f9-e465-431d-8f24-398f1e882700", // Replace with your actual client ID
+      clientId: "c5fa69f9-e465-431d-8f24-398f1e882700", // Your Azure App Client ID
       authority: "https://login.microsoftonline.com/common",
-      redirectUri: "http://localhost:5500/ati-email-app/index.html" // Must match Azure app registration
+      redirectUri: "https://ati-fetch-ruels-projects-54bfc2e3.vercel.app/" // ✅ Matches the registered URI in Azure
     }
   };
 
@@ -35,11 +35,9 @@
   // === Sign in and get token ===
   async function signIn() {
     try {
-      // Popup sign-in
       const loginResp = await msalInstance.loginPopup({ scopes: ["Mail.Read", "User.Read"] });
       currentAccount = loginResp.account;
 
-      // Get access token silently first
       let tokenResp;
       try {
         tokenResp = await msalInstance.acquireTokenSilent({
@@ -47,14 +45,11 @@
           account: currentAccount
         });
       } catch {
-        // Fallback to popup if silent token fails
         tokenResp = await msalInstance.acquireTokenPopup({ scopes: ["Mail.Read"] });
       }
 
       const accessToken = tokenResp.accessToken;
-
-      // Fetch emails using Graph API
-      fetchEmails(accessToken);
+      fetchEmails(accessToken); // Fetch emails after login
     } catch (err) {
       console.error("Sign-in failed:", err);
     }
@@ -63,7 +58,6 @@
   // === Fetch emails using Graph API ===
   async function fetchEmails(token) {
     try {
-      // Request user's top 10 messages
       const res = await fetch("https://graph.microsoft.com/v1.0/me/messages?$top=10&$select=id,subject,bodyPreview,from", {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -72,18 +66,14 @@
       const list = document.getElementById("emailList");
       list.innerHTML = "";
 
-      // Display each email in the list
       data.value.forEach(email => {
         const from = email.from?.emailAddress?.address || "Unknown";
         const subject = email.subject || "(No Subject)";
         const item = document.createElement("li");
         item.textContent = `${from} - ${subject}`;
-
-        // On click, show body preview
         item.onclick = () => {
           document.getElementById("emailBody").value = email.bodyPreview || "No preview available.";
         };
-
         list.appendChild(item);
       });
 
@@ -92,15 +82,13 @@
     }
   }
 
-  // === Event binding ===
   document.getElementById("signInBtn").onclick = signIn;
 
-  // === Auto sign-in if session already exists ===
   window.onload = () => {
     const accounts = msalInstance.getAllAccounts();
     if (accounts.length > 0) {
       currentAccount = accounts[0];
-      signIn(); // Auto re-sign-in to trigger email fetch
+      signIn();
     }
   };
 </script>
