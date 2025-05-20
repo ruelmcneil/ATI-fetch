@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Minimal Email Viewer</title>
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+  <style>
+    body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; }
+    button { margin-bottom: 10px; padding: 10px; }
+    textarea { width: 100%; height: 200px; background: #222; color: #fff; border: 1px solid #444; }
+    ul { list-style: none; padding: 0; }
+    li { padding: 8px; background: #222; margin-bottom: 5px; cursor: pointer; }
+    li:hover { background: #333; }
+  </style>
+</head>
+<body>
+
+<h3>📧 Outlook Email Viewer</h3>
+<button id="signInBtn">Sign In</button>
+<ul id="emailList"></ul>
+<textarea id="emailBody" readonly></textarea>
+
+<script>
+  // === MSAL Configuration ===
+  const msalConfig = {
+    auth: {
+      clientId: "c5fa69f9-e465-431d-8f24-398f1e882700", // Replace with your actual client ID
+      authority: "https://login.microsoftonline.com/common",
+      redirectUri: "http://localhost:5500/ati-email-app/index.html" // Must match Azure app registration
+    }
+  };
+
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
+  let currentAccount = null;
+
+  // === Sign in and get token ===
+  async function signIn() {
+    try {
+      // Popup sign-in
+      const loginResp = await msalInstance.loginPopup({ scopes: ["Mail.Read", "User.Read"] });
+      currentAccount = loginResp.account;
+
+      // Get access token silently first
+      let tokenResp;
+      try {
+        tokenResp = await msalInstance.acquireTokenSilent({
+          scopes: ["Mail.Read"],
+          account: currentAccount
+        });
+      } catch {
+        // Fallback to popup if silent token fails
+        tokenResp = await msalInstance.acquireTokenPopup({ scopes: ["Mail.Read"] });
+      }
+
+      const accessToken = tokenResp.accessToken;
+
+      // Fetch emails using Graph API
+      fetchEmails(accessToken);
+    } catch (err) {
+      console.error("Sign-in failed:", err);
+    }
+  }
+
+  // === Fetch emails using Graph API ===
+  async function fetchEmails(token) {
+    try {
+      // Request user's top 10 messages
+      const res = await fetch("https://graph.microsoft.com/v1.0/me/messages?$top=10&$select=id,subject,bodyPreview,from", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+      const list = document.getElementById("emailList");
+      list.innerHTML = "";
+
+      // Display each email in the list
+      data.value.forEach(email => {
+        const from = email.from?.emailAddress?.address || "Unknown";
+        const subject = email.subject || "(No Subject)";
+        const item = document.createElement("li");
+        item.textContent = `${from} - ${subject}`;
+
+        // On click, show body preview
+        item.onclick = () => {
+          document.getElementById("emailBody").value = email.bodyPreview || "No preview available.";
+        };
+
+        list.appendChild(item);
+      });
+
+    } catch (err) {
+      console.error("Error fetching emails:", err);
+    }
+  }
+
+  // === Event binding ===
+  document.getElementById("signInBtn").onclick = signIn;
+
+  // === Auto sign-in if session already exists ===
+  window.onload = () => {
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+      currentAccount = accounts[0];
+      signIn(); // Auto re-sign-in to trigger email fetch
+    }
+  };
+</script>
+</body>
+</html>
